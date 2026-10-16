@@ -211,7 +211,7 @@ local function build()
             local emptyLbl = Instance.new("TextLabel")
             emptyLbl.Size = UDim2.new(1, 0, 0, 30)
             emptyLbl.BackgroundTransparency = 1
-            emptyLbl.Text = "No configs yet — сохрани первый"
+            emptyLbl.Text = "No configs yet"
             emptyLbl.TextColor3 = T.textMuted
             emptyLbl.TextSize = 11
             emptyLbl.Font = Enum.Font.Gotham

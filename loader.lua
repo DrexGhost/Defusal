@@ -11,8 +11,8 @@ screenGui.DisplayOrder = 6000
 screenGui.Parent = PlayerGui
 
 local logFrame = Instance.new("Frame")
-logFrame.Size = UDim2.new(0, 500, 0, 340)
-logFrame.Position = UDim2.new(0.5, -250, 0.5, -170)
+logFrame.Size = UDim2.new(0, 520, 0, 400)
+logFrame.Position = UDim2.new(0.5, -260, 0.5, -200)
 logFrame.BackgroundColor3 = Color3.fromRGB(14, 18, 32)
 logFrame.BorderSizePixel = 0
 logFrame.Parent = screenGui
@@ -39,6 +39,22 @@ title.Parent = logFrame
 local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 12)
 titleCorner.Parent = title
+
+local copyBtn = Instance.new("TextButton")
+copyBtn.Size = UDim2.new(0, 70, 0, 26)
+copyBtn.Position = UDim2.new(1, -104, 0, 5)
+copyBtn.BackgroundColor3 = Color3.fromRGB(0, 229, 204)
+copyBtn.BorderSizePixel = 0
+copyBtn.Text = "COPY"
+copyBtn.TextColor3 = Color3.fromRGB(10, 14, 24)
+copyBtn.TextSize = 11
+copyBtn.Font = Enum.Font.GothamBold
+copyBtn.AutoButtonColor = false
+copyBtn.Parent = title
+
+local copyCorner = Instance.new("UICorner")
+copyCorner.CornerRadius = UDim.new(0, 6)
+copyCorner.Parent = copyBtn
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 26, 0, 26)
@@ -87,7 +103,10 @@ local C_INFO = Color3.fromRGB(150, 162, 190)
 local C_ACC = Color3.fromRGB(0, 229, 204)
 local C_WARN = Color3.fromRGB(255, 200, 80)
 
+local logLines = {}
+
 local function log(text, color)
+    table.insert(logLines, text)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, 0, 0, 16)
     lbl.BackgroundTransparency = 1
@@ -99,6 +118,20 @@ local function log(text, color)
     lbl.TextWrapped = true
     lbl.Parent = scroll
 end
+
+copyBtn.MouseButton1Click:Connect(function()
+    local text = table.concat(logLines, "\n")
+    if setclipboard then
+        setclipboard(text)
+        copyBtn.Text = "OK!"
+        task.wait(1)
+        copyBtn.Text = "COPY"
+    else
+        copyBtn.Text = "N/A"
+        task.wait(1)
+        copyBtn.Text = "COPY"
+    end
+end)
 
 local function fetch(name)
     local url = base .. name
@@ -248,12 +281,8 @@ else
 end
 
 log("", C_INFO)
+log("Вкладок в GUI: " .. tostring(#GUI._tabs), C_ACC)
+log("Menu visible: " .. tostring(GUI.Main.Visible), C_ACC)
+log("", C_INFO)
 log("LOADER DONE", C_ACC)
-log("Если 'Вкладок создано: 5' — всё ок", C_INFO)
-log("Меню открывается по Left Alt", C_INFO)
-
-task.delay(10, function()
-    if logFrame.Parent then
-        logFrame.Visible = false
-    end
-end)
+log("Открой меню по Left Alt", C_INFO)

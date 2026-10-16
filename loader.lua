@@ -142,12 +142,8 @@ end
 log("START LOADER", C_ACC)
 log("", C_INFO)
 
-local codeCore = fetch("core.lua")
-local fnCore = compile("core.lua", codeCore)
-local Core = run("core.lua", fnCore)
-
+local Core = run("core.lua", compile("core.lua", fetch("core.lua")))
 if not Core then
-    log("", C_INFO)
     log("КРИТИЧЕСКАЯ ОШИБКА: Core не загрузился", C_FAIL)
     return
 end
@@ -160,52 +156,60 @@ Core.saveSetting("speed", false)
 
 log("", C_INFO)
 
-local codeGUI = fetch("gui.lua")
-local fnGUI = compile("gui.lua", codeGUI)
-local GUI = run("gui.lua", fnGUI, Core)
-
+local GUI = run("gui.lua", compile("gui.lua", fetch("gui.lua")), Core)
 if not GUI then
-    log("", C_INFO)
     log("КРИТИЧЕСКАЯ ОШИБКА: GUI не загрузился", C_FAIL)
     return
 end
 
 log("", C_INFO)
 
-local codeLogic = fetch("esp_logic.lua")
-local fnLogic = compile("esp_logic.lua", codeLogic)
-local Logic = run("esp_logic.lua", fnLogic, Core, GUI)
-
+local Logic = run("esp_logic.lua", compile("esp_logic.lua", fetch("esp_logic.lua")), Core, GUI)
 if not Logic then
-    log("", C_INFO)
     log("КРИТИЧЕСКАЯ ОШИБКА: Logic не загрузился", C_FAIL)
     return
 end
 
 log("", C_INFO)
+log("=== ЗАГРУЗКА ВКЛАДОК ===", C_ACC)
 
-local codeMain = fetch("main.lua")
-local fnMain = compile("main.lua", codeMain)
-run("main.lua", fnMain, Core, GUI, Logic)
+local function loadTab(name)
+    local code = fetch(name)
+    if not code then return end
+    local fn = compile(name, code)
+    if not fn then return end
+    local ok, build = pcall(fn, Core, GUI, Logic)
+    if not ok then
+        log("[FAIL] build " .. name, C_FAIL)
+        log("   " .. tostring(build), C_FAIL)
+        return
+    end
+    if type(build) == "function" then
+        local ok2, err = pcall(build)
+        if not ok2 then
+            log("[FAIL] call build " .. name, C_FAIL)
+            log("   " .. tostring(err), C_FAIL)
+            return
+        end
+        log("[OK] " .. name .. " tab created", C_OK)
+    else
+        log("[WARN] " .. name .. " — build is not a function", C_WARN)
+    end
+end
 
-local codeESP = fetch("esp.lua")
-local fnESP = compile("esp.lua", codeESP)
-run("esp.lua", fnESP, Core, GUI, Logic)
-
-local codeCombat = fetch("combat.lua")
-local fnCombat = compile("combat.lua", codeCombat)
-run("combat.lua", fnCombat, Core, GUI, Logic)
-
-local codeMovement = fetch("movement.lua")
-local fnMovement = compile("movement.lua", codeMovement)
-run("movement.lua", fnMovement, Core, GUI, Logic)
-
-local codeSettings = fetch("settings.lua")
-local fnSettings = compile("settings.lua", codeSettings)
-run("settings.lua", fnSettings, Core, GUI, Logic)
+loadTab("main.lua")
+loadTab("esp.lua")
+loadTab("combat.lua")
+loadTab("movement.lua")
+loadTab("settings.lua")
 
 log("", C_INFO)
 log("=== ПОСЛЕ ЗАГРУЗКИ ===", C_ACC)
+
+local tabsCount = #GUI._tabs
+local pagesCount = #GUI._pages
+log("Вкладок создано: " .. tostring(tabsCount), tabsCount > 0 and C_OK or C_FAIL)
+log("Страниц создано: " .. tostring(pagesCount), pagesCount > 0 and C_OK or C_FAIL)
 
 local okActivate = pcall(function()
     GUI.activateFirstTab()
@@ -245,10 +249,10 @@ end
 
 log("", C_INFO)
 log("LOADER DONE", C_ACC)
-log("Если всё [OK] — меню открывается по Left Alt", C_INFO)
-log("Если есть [FAIL] — скинь скрин мне", C_INFO)
+log("Если 'Вкладок создано: 5' — всё ок", C_INFO)
+log("Меню открывается по Left Alt", C_INFO)
 
-task.delay(8, function()
+task.delay(10, function()
     if logFrame.Parent then
         logFrame.Visible = false
     end

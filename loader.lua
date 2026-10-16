@@ -5,21 +5,30 @@ local function fetch(name)
     local ok, code = pcall(function()
         return game:HttpGet(url)
     end)
-    if not ok then return nil end
+    if not ok then
+        warn("[Defusal] fetch failed: " .. name .. " — " .. tostring(code))
+        return nil
+    end
     return code
 end
 
 local function compile(name, code)
     if not code then return nil end
-    local fn = loadstring(code)
-    if not fn then return nil end
+    local fn, err = loadstring(code)
+    if not fn then
+        warn("[Defusal] compile failed: " .. name .. " — " .. tostring(err))
+        return nil
+    end
     return fn
 end
 
 local function run(name, fn, ...)
     if not fn then return nil end
     local ok, result = pcall(fn, ...)
-    if not ok then return nil end
+    if not ok then
+        warn("[Defusal] run failed: " .. name .. " — " .. tostring(result))
+        return nil
+    end
     return result
 end
 
@@ -45,9 +54,15 @@ local function loadTab(name)
     local fn = compile(name, code)
     if not fn then return end
     local ok, build = pcall(fn, Core, GUI, Logic)
-    if not ok then return end
+    if not ok then
+        warn("[Defusal] tab build failed: " .. name .. " — " .. tostring(build))
+        return
+    end
     if type(build) == "function" then
-        pcall(build)
+        local ok2, err = pcall(build)
+        if not ok2 then
+            warn("[Defusal] tab call failed: " .. name .. " — " .. tostring(err))
+        end
     end
 end
 
@@ -56,6 +71,13 @@ loadTab("esp.lua")
 loadTab("combat.lua")
 loadTab("movement.lua")
 loadTab("settings.lua")
+
+if Core.Watermark then
+    pcall(function()
+        Core.Watermark.setEnabled(Core.settings.watermark or false)
+        Core.Watermark.setScale((Core.settings.watermarkScale or 100) / 100)
+    end)
+end
 
 pcall(function() GUI.activateFirstTab() end)
 pcall(function() GUI.setOpenState(Core.settings.menuOpen) end)

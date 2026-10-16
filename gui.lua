@@ -11,6 +11,9 @@ local T = Core.T
 
 local GUI = {}
 
+GUI._tabs = {}
+GUI._pages = {}
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "DefusalUI"
 screenGui.ResetOnSpawn = false
@@ -420,6 +423,8 @@ function GUI.makeTab(text, order, iconKind)
         end
     end)
 
+    table.insert(GUI._tabs, obj)
+
     return obj
 end
 
@@ -446,7 +451,26 @@ function GUI.makePage()
     pad.PaddingBottom = UDim.new(0, 8)
     pad.Parent = page
 
+    table.insert(GUI._pages, page)
+
     return page
+end
+
+function GUI.switchTab(targetTab, targetPage)
+    for _, tab in ipairs(GUI._tabs) do
+        if tab == targetTab then
+            tab.SetActive(true)
+        else
+            tab.SetActive(false)
+        end
+    end
+    for _, page in ipairs(GUI._pages) do
+        if page == targetPage then
+            page.Visible = true
+        else
+            page.Visible = false
+        end
+    end
 end
 
 function GUI.makeSectionHeader(parent, text, order)
@@ -920,6 +944,46 @@ function GUI.isOpen()
     return isOpen
 end
 
+function GUI.setOpenState(open)
+    if open then
+        if not isOpen then
+            isOpen = true
+            Main.Visible = true
+            Main.Size = UDim2.new(0, BASE_W, 0, BASE_H)
+            floatBtn.Size = UDim2.new(0, 0, 0, 0)
+        end
+    else
+        if isOpen then
+            isOpen = false
+            Main.Visible = false
+        end
+        floatBtn.Size = UDim2.new(0, Core.settings.floatBtnSize or Core.BUTTON_DEFAULT_SIZE, 0, Core.settings.floatBtnSize or Core.BUTTON_DEFAULT_SIZE)
+    end
+end
+
+function GUI.setScale(scale)
+    uiScale.Scale = scale
+end
+
+function GUI.setButtonSize(size)
+    Core.settings.floatBtnSize = size
+    if not isOpen and not animating then
+        TweenService:Create(floatBtn, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, size, 0, size)
+        }):Play()
+    end
+end
+
+function GUI.setButtonPos(pos)
+    floatBtn.Position = UDim2.new(pos[1] or 0, pos[2] or 20, pos[3] or 0.5, pos[4] or 0)
+end
+
+function GUI.activateFirstTab()
+    if #GUI._tabs > 0 and #GUI._pages > 0 then
+        GUI.switchTab(GUI._tabs[1], GUI._pages[1])
+    end
+end
+
 local fbDragging = false
 local fbDragStart = nil
 local fbStartPos = nil
@@ -976,39 +1040,5 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
         if isOpen then GUI.close() else GUI.open() end
     end
 end)
-
-function GUI.setOpenState(open)
-    if open then
-        if not isOpen then
-            isOpen = true
-            Main.Visible = true
-            Main.Size = UDim2.new(0, BASE_W, 0, BASE_H)
-            floatBtn.Size = UDim2.new(0, 0, 0, 0)
-        end
-    else
-        if isOpen then
-            isOpen = false
-            Main.Visible = false
-        end
-        floatBtn.Size = UDim2.new(0, Core.settings.floatBtnSize or Core.BUTTON_DEFAULT_SIZE, 0, Core.settings.floatBtnSize or Core.BUTTON_DEFAULT_SIZE)
-    end
-end
-
-function GUI.setScale(scale)
-    uiScale.Scale = scale
-end
-
-function GUI.setButtonSize(size)
-    Core.settings.floatBtnSize = size
-    if not isOpen and not animating then
-        TweenService:Create(floatBtn, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, size, 0, size)
-        }):Play()
-    end
-end
-
-function GUI.setButtonPos(pos)
-    floatBtn.Position = UDim2.new(pos[1] or 0, pos[2] or 20, pos[3] or 0.5, pos[4] or 0)
-end
 
 return GUI

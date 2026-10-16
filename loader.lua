@@ -1,36 +1,255 @@
+local player = game.Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
 local base = "https://raw.githubusercontent.com/DrexGhost/Defusal/main/"
 
-local function load(name)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DefusalLoaderLog"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 6000
+screenGui.Parent = PlayerGui
+
+local logFrame = Instance.new("Frame")
+logFrame.Size = UDim2.new(0, 500, 0, 340)
+logFrame.Position = UDim2.new(0.5, -250, 0.5, -170)
+logFrame.BackgroundColor3 = Color3.fromRGB(14, 18, 32)
+logFrame.BorderSizePixel = 0
+logFrame.Parent = screenGui
+
+local logCorner = Instance.new("UICorner")
+logCorner.CornerRadius = UDim.new(0, 12)
+logCorner.Parent = logFrame
+
+local logStroke = Instance.new("UIStroke")
+logStroke.Color = Color3.fromRGB(44, 54, 86)
+logStroke.Thickness = 1
+logStroke.Parent = logFrame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.BackgroundColor3 = Color3.fromRGB(20, 26, 44)
+title.BorderSizePixel = 0
+title.Text = "DEFUSAL LOADER"
+title.TextColor3 = Color3.fromRGB(232, 238, 248)
+title.TextSize = 14
+title.Font = Enum.Font.GothamBold
+title.Parent = logFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 12)
+titleCorner.Parent = title
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 26, 0, 26)
+closeBtn.Position = UDim2.new(1, -32, 0, 5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 90, 110)
+closeBtn.BorderSizePixel = 0
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 12
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.AutoButtonColor = false
+closeBtn.Parent = title
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
+
+closeBtn.MouseButton1Click:Connect(function()
+    logFrame.Visible = false
+end)
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -16, 1, -46)
+scroll.Position = UDim2.new(0, 8, 0, 40)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 3
+scroll.ScrollBarImageColor3 = Color3.fromRGB(0, 229, 204)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.Parent = logFrame
+
+local logLayout = Instance.new("UIListLayout")
+logLayout.Padding = UDim.new(0, 3)
+logLayout.SortOrder = Enum.SortOrder.LayoutOrder
+logLayout.Parent = scroll
+
+local logPad = Instance.new("UIPadding")
+logPad.PaddingBottom = UDim.new(0, 6)
+logPad.PaddingRight = UDim.new(0, 6)
+logPad.Parent = scroll
+
+local C_OK = Color3.fromRGB(80, 230, 140)
+local C_FAIL = Color3.fromRGB(255, 90, 110)
+local C_INFO = Color3.fromRGB(150, 162, 190)
+local C_ACC = Color3.fromRGB(0, 229, 204)
+local C_WARN = Color3.fromRGB(255, 200, 80)
+
+local function log(text, color)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 16)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = color or Color3.fromRGB(232, 238, 248)
+    lbl.TextSize = 11
+    lbl.Font = Enum.Font.Code
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextWrapped = true
+    lbl.Parent = scroll
+end
+
+local function fetch(name)
     local url = base .. name
     local ok, code = pcall(function()
         return game:HttpGet(url)
     end)
     if not ok then
-        warn("[Defusal] Failed to fetch " .. name .. ": " .. tostring(code))
+        log("[FAIL] fetch " .. name .. ": " .. tostring(code), C_FAIL)
         return nil
     end
+    log("[OK] fetched " .. name .. " (" .. #code .. "b)", C_OK)
+    return code
+end
+
+local function compile(name, code)
     local fn, err = loadstring(code)
     if not fn then
-        warn("[Defusal] Failed to compile " .. name .. ": " .. tostring(err))
+        log("[FAIL] compile " .. name, C_FAIL)
+        log("   " .. tostring(err), C_FAIL)
         return nil
     end
-    local ok2, result = pcall(fn)
-    if not ok2 then
-        warn("[Defusal] Failed to run " .. name .. ": " .. tostring(result))
+    log("[OK] compiled " .. name, C_OK)
+    return fn
+end
+
+local function run(name, fn, ...)
+    if not fn then
+        log("[SKIP] " .. name .. " — no function", C_WARN)
         return nil
     end
+    local ok, result = pcall(fn, ...)
+    if not ok then
+        log("[FAIL] run " .. name, C_FAIL)
+        log("   " .. tostring(result), C_FAIL)
+        return nil
+    end
+    log("[OK] ran " .. name, C_OK)
     return result
 end
 
-local Core = load("core.lua")
-if not Core then return end
+log("START LOADER", C_ACC)
+log("", C_INFO)
+
+local codeCore = fetch("core.lua")
+local fnCore = compile("core.lua", codeCore)
+local Core = run("core.lua", fnCore)
+
+if not Core then
+    log("", C_INFO)
+    log("КРИТИЧЕСКАЯ ОШИБКА: Core не загрузился", C_FAIL)
+    return
+end
 
 Core.loadSettings()
-
 Core.settings.noclip = false
 Core.settings.speed = false
 Core.saveSetting("noclip", false)
 Core.saveSetting("speed", false)
 
-local GUI = load("gui.lua", Core)
-if not GUI then return end
+log("", C_INFO)
+
+local codeGUI = fetch("gui.lua")
+local fnGUI = compile("gui.lua", codeGUI)
+local GUI = run("gui.lua", fnGUI, Core)
+
+if not GUI then
+    log("", C_INFO)
+    log("КРИТИЧЕСКАЯ ОШИБКА: GUI не загрузился", C_FAIL)
+    return
+end
+
+log("", C_INFO)
+
+local codeLogic = fetch("esp_logic.lua")
+local fnLogic = compile("esp_logic.lua", codeLogic)
+local Logic = run("esp_logic.lua", fnLogic, Core, GUI)
+
+if not Logic then
+    log("", C_INFO)
+    log("КРИТИЧЕСКАЯ ОШИБКА: Logic не загрузился", C_FAIL)
+    return
+end
+
+log("", C_INFO)
+
+local codeMain = fetch("main.lua")
+local fnMain = compile("main.lua", codeMain)
+run("main.lua", fnMain, Core, GUI, Logic)
+
+local codeESP = fetch("esp.lua")
+local fnESP = compile("esp.lua", codeESP)
+run("esp.lua", fnESP, Core, GUI, Logic)
+
+local codeCombat = fetch("combat.lua")
+local fnCombat = compile("combat.lua", codeCombat)
+run("combat.lua", fnCombat, Core, GUI, Logic)
+
+local codeMovement = fetch("movement.lua")
+local fnMovement = compile("movement.lua", codeMovement)
+run("movement.lua", fnMovement, Core, GUI, Logic)
+
+local codeSettings = fetch("settings.lua")
+local fnSettings = compile("settings.lua", codeSettings)
+run("settings.lua", fnSettings, Core, GUI, Logic)
+
+log("", C_INFO)
+log("=== ПОСЛЕ ЗАГРУЗКИ ===", C_ACC)
+
+local okActivate = pcall(function()
+    GUI.activateFirstTab()
+end)
+if okActivate then
+    log("[OK] GUI.activateFirstTab", C_OK)
+else
+    log("[FAIL] GUI.activateFirstTab", C_FAIL)
+end
+
+local okState = pcall(function()
+    GUI.setOpenState(Core.settings.menuOpen)
+end)
+if okState then
+    log("[OK] GUI.setOpenState", C_OK)
+else
+    log("[FAIL] GUI.setOpenState", C_FAIL)
+end
+
+local okEvents = pcall(function()
+    Logic.setupEvents()
+end)
+if okEvents then
+    log("[OK] Logic.setupEvents", C_OK)
+else
+    log("[FAIL] Logic.setupEvents", C_FAIL)
+end
+
+local okLoop = pcall(function()
+    Logic.startLoop()
+end)
+if okLoop then
+    log("[OK] Logic.startLoop", C_OK)
+else
+    log("[FAIL] Logic.startLoop", C_FAIL)
+end
+
+log("", C_INFO)
+log("LOADER DONE", C_ACC)
+log("Если всё [OK] — меню открывается по Left Alt", C_INFO)
+log("Если есть [FAIL] — скинь скрин мне", C_INFO)
+
+task.delay(8, function()
+    if logFrame.Parent then
+        logFrame.Visible = false
+    end
+end)

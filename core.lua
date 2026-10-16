@@ -6,6 +6,7 @@ local LocalPlayer = Players.LocalPlayer
 local Core = {}
 
 Core.CONFIG_FILE = "NexusXDefusal.json"
+Core.CONFIG_FOLDER = "DefusalConfigs"
 Core.BOMB_TIME = 40
 Core.BUTTON_DEFAULT_SIZE = 58
 
@@ -81,6 +82,8 @@ Core.settings = {
     floatBtnPos = {0, 20, 0.5, 0},
     floatBtnSize = 58,
     guiScale = 85,
+    watermark = false,
+    watermarkScale = 100,
 }
 
 Core.toggleRefs = {}
@@ -157,6 +160,102 @@ function Core.saveSetting(name, value)
     else
         stored.Value = value
     end
+end
+
+function Core.ensureFolder()
+    if not isfolder or not makefolder then return false end
+    local ok = pcall(function()
+        if not isfolder(Core.CONFIG_FOLDER) then
+            makefolder(Core.CONFIG_FOLDER)
+        end
+    end)
+    return ok
+end
+
+function Core.isValidConfigName(name)
+    if type(name) ~= "string" then return false end
+    if #name < 1 or #name > 30 then return false end
+    if not name:match("^[%w_%-]+$") then return false end
+    return true
+end
+
+function Core.listConfigs()
+    if not isfolder or not listfiles then return {} end
+    if not Core.ensureFolder() then return {} end
+    local result = {}
+    local ok, files = pcall(function()
+        return listfiles(Core.CONFIG_FOLDER)
+    end)
+    if not ok or type(files) ~= "table" then return result end
+    for _, filePath in ipairs(files) do
+        local fileName = tostring(filePath):match("([^/\\]+)$") or tostring(filePath)
+        local n = fileName:match("^(.+)%.json$")
+        if n then table.insert(result, n) end
+    end
+    table.sort(result)
+    return result
+end
+
+function Core.saveConfigAs(name)
+    if not Core.isValidConfigName(name) then
+        return false, "Invalid name"
+    end
+    if not Core.ensureFolder() then
+        return false, "File system not available"
+    end
+    local data = {}
+    for k, v in pairs(Core.settings) do
+        data[k] = v
+    end
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(data)
+    end)
+    if not ok then return false, "JSON encode failed" end
+    local path = Core.CONFIG_FOLDER .. "/" .. name .. ".json"
+    local ok2, err = pcall(function()
+        writefile(path, encoded)
+    end)
+    if not ok2 then return false, tostring(err) end
+    return true
+end
+
+function Core.loadConfigFrom(name)
+    if not Core.isValidConfigName(name) then
+        return false, "Invalid name"
+    end
+    if not isfile then return false, "File system not available" end
+    local path = Core.CONFIG_FOLDER .. "/" .. name .. ".json"
+    if not isfile(path) then
+        return false, "Config not found"
+    end
+    local ok, contents = pcall(function()
+        return readfile(path)
+    end)
+    if not ok then return false, tostring(contents) end
+    local ok2, decoded = pcall(function()
+        return HttpService:JSONDecode(contents)
+    end)
+    if not ok2 then return false, "JSON decode failed" end
+    if type(decoded) ~= "table" then return false, "Invalid config" end
+    for k, v in pairs(decoded) do
+        if Core.settings[k] ~= nil then
+            local currentType = type(Core.settings[k])
+            local newType = type(v)
+            if currentType == newType then
+                Core.settings[k] = v
+                Core.saveSetting(k, v)
+            end
+        end
+    end
+    return true
+end
+
+function Core.deleteConfig(name)
+    if not Core.isValidConfigName(name) then return false end
+    if not isfolder or not delfile then return false end
+    local path = Core.CONFIG_FOLDER .. "/" .. name .. ".json"
+    local ok = pcall(function() delfile(path) end)
+    return ok
 end
 
 function Core.saveConfig()

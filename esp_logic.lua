@@ -103,6 +103,7 @@ end
 local espList = {}
 local espConnectionTrack = {}
 local attributeConns = {}
+local arrows = {}
 
 local function destroyESPFor(target)
     local data = espList[target]
@@ -361,6 +362,87 @@ local function updateESP()
     end
 end
 
+local function updateArrows()
+    if not HAS_DRAWING then return end
+
+    if not settings.espArrows then
+        for _, arrow in pairs(arrows) do 
+            arrow.outline.Visible = false
+            arrow.fill.Visible = false 
+        end
+        return
+    end
+
+    local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+    local edgeRadius = math.min(camera.ViewportSize.X, camera.ViewportSize.Y) / 2 - 40
+
+    for _, target in pairs(Players:GetPlayers()) do
+        if target ~= LocalPlayer and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            if isPlayerAlive(target) then
+                local hrp = target.Character.HumanoidRootPart
+                local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+                
+                if not arrows[target] then
+                    arrows[target] = {
+                        outline = Drawing.new("Triangle"),
+                        fill = Drawing.new("Triangle")
+                    }
+                    arrows[target].outline.Filled = true
+                    arrows[target].outline.Color = Color3.fromRGB(0, 0, 0)
+                    arrows[target].outline.Thickness = 1
+                    
+                    arrows[target].fill.Filled = true
+                    arrows[target].fill.Thickness = 1
+                end
+
+                local arrow = arrows[target]
+
+                local shouldShow = (not isTeammate(target) or settings.espTeam)
+
+                if not shouldShow or (onScreen and screenPos.Z > 0) then
+                    arrow.outline.Visible = false
+                    arrow.fill.Visible = false
+                else
+                    local isTeam = isTeammate(target)
+                    local color = isTeam and Core.teamColor or Core.enemyColor
+
+                    local dir = (hrp.Position - camera.CFrame.Position).Unit
+                    local camRight = camera.CFrame.RightVector
+                    local camUp = camera.CFrame.UpVector
+                    
+                    local dotRight = dir:Dot(camRight)
+                    local dotUp = dir:Dot(camUp)
+                    
+                    local angle = math.atan2(dotUp, dotRight)
+                    local x = center.X + math.cos(angle) * edgeRadius
+                    local y = center.Y - math.sin(angle) * edgeRadius
+                    
+                    local size = 8
+                    local p1 = Vector2.new(x + math.cos(angle) * size, y - math.sin(angle) * size)
+                    local p2 = Vector2.new(x + math.cos(angle + 2.2) * size, y - math.sin(angle + 2.2) * size)
+                    local p3 = Vector2.new(x + math.cos(angle - 2.2) * size, y - math.sin(angle - 2.2) * size)
+
+                    local outSize = size + 2
+                    local o1 = Vector2.new(x + math.cos(angle) * outSize, y - math.sin(angle) * outSize)
+                    local o2 = Vector2.new(x + math.cos(angle + 2.2) * outSize, y - math.sin(angle + 2.2) * outSize)
+                    local o3 = Vector2.new(x + math.cos(angle - 2.2) * outSize, y - math.sin(angle - 2.2) * outSize)
+                    
+                    arrow.outline.PointA = o1
+                    arrow.outline.PointB = o2
+                    arrow.outline.PointC = o3
+                    arrow.outline.Visible = true
+
+                    arrow.fill.PointA = p1
+                    arrow.fill.PointB = p2
+                    arrow.fill.PointC = p3
+                    arrow.fill.Color = color
+                    arrow.fill.Visible = true
+                end
+            end
+        end
+    end
+end
+
 local function refreshESP()
     local toDestroy = {}
     for target, _ in pairs(espList) do table.insert(toDestroy, target) end
@@ -547,31 +629,41 @@ if type(hookmetamethod) == "function" then
     local old
     old = hookmetamethod(game, "__namecall", function(self, ...)
         local m = getnamecallmethod()
-        if not inSilentHook and settings.silentAim and silentTarget and m == "Raycast" and self == workspace then
+        if not inSilentHook and m == "Raycast" and self == workspace then
             local args = {...}
             local origin = args[1]
             local direction = args[2]
             local params = args[3]
+
             if isWeaponRaycast(origin, direction, params) then
-                local targetPart = silentTarget.character:FindFirstChild(settings.silentPart)
-                if not targetPart then targetPart = silentTarget.character:FindFirstChild("Head") end
-                if targetPart and targetPart:IsA("BasePart") then
-                    local canHit = true
-                    if not settings.silentWallbang then
-                        canHit = isTargetVisibleFrom(origin, silentTarget.character, targetPart)
-                    end
-                    if canHit then
-                        local newParams = RaycastParams.new()
-                        newParams.FilterType = Enum.RaycastFilterType.Include
-                        newParams.FilterDescendantsInstances = {silentTarget.character}
-                        newParams.IgnoreWater = false
-                        local toPart = targetPart.Position - origin
-                        local newDir = toPart.Unit * direction.Magnitude
-                        local fakeHit = rawRaycast(origin, newDir, newParams)
-                        if fakeHit then
-                            silentHits = silentHits + 1
-                            return fakeHit
+                if settings.silentAim and silentTarget then
+                    local targetPart = silentTarget.character:FindFirstChild(settings.silentPart)
+                    if not targetPart then targetPart = silentTarget.character:FindFirstChild("Head") end
+                    if targetPart and targetPart:IsA("BasePart") then
+                        local canHit = true
+                        if not settings.silentWallbang then
+                            canHit = isTargetVisibleFrom(origin, silentTarget.character, targetPart)
                         end
+                        if canHit then
+                            local newParams = RaycastParams.new()
+                            newParams.FilterType = Enum.RaycastFilterType.Include
+                            newParams.FilterDescendantsInstances = {silentTarget.character}
+                            newParams.IgnoreWater = false
+                            local toPart = targetPart.Position - origin
+                            local newDir = toPart.Unit * direction.Magnitude
+                            local fakeHit = rawRaycast(origin, newDir, newParams)
+                            if fakeHit then
+                                silentHits = silentHits + 1
+                                return fakeHit
+                            end
+                        end
+                    end
+                elseif settings.noSpread then
+                    local look = camera.CFrame.LookVector
+                    local dist = direction.Magnitude
+                    local fakeHit = rawRaycast(origin, look * dist, params)
+                    if fakeHit then
+                        return fakeHit
                     end
                 end
             end
@@ -781,6 +873,7 @@ Logic.isVisible = isVisible
 Logic.getTargetPartFor = getTargetPartFor
 Logic.refreshESP = refreshESP
 Logic.updateESP = updateESP
+Logic.updateArrows = updateArrows
 Logic.updateBombEsp = updateBombEsp
 Logic.updateFovCircle = updateFovCircle
 Logic.updateSilentFovCircle = updateSilentFovCircle
@@ -827,6 +920,11 @@ function Logic.setupEvents()
             for _, c in ipairs(attributeConns[target]) do c:Disconnect() end
             attributeConns[target] = nil
         end
+        if arrows[target] then
+            arrows[target].outline:Remove()
+            arrows[target].fill:Remove()
+            arrows[target] = nil
+        end
     end)
 
     LocalPlayer.CharacterAdded:Connect(function()
@@ -843,6 +941,7 @@ function Logic.startLoop()
         if settings.esp then
             pcall(updateESP)
         end
+        pcall(updateArrows)
 
         lastBombUpdate = lastBombUpdate + dt
         if lastBombUpdate >= 0.15 then

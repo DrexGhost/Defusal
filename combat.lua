@@ -157,6 +157,12 @@ local function build()
         TweenService:Create(silentPartStroke, TweenInfo.new(0.15), {Color = T.stroke, Transparency = 0}):Play()
     end)
 
+    GUI.makeSectionHeader(page, "Other", 16)
+
+    GUI.makeToggle(page, "No Spread", "Убрать разброс пуль", settings.noSpread, 17, function(v)
+        settings.noSpread = v
+    end, "noSpread")
+
     tab.Button.MouseButton1Click:Connect(function()
         GUI.switchTab(tab, page)
     end)

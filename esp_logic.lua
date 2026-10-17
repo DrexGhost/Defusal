@@ -365,7 +365,7 @@ end
 local function updateArrows()
     if not HAS_DRAWING then return end
 
-    if not settings.espArrows then
+    if not settings.espArrows or not settings.esp then
         for _, arrow in pairs(arrows) do 
             arrow.outline.Visible = false
             arrow.fill.Visible = false 

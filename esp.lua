@@ -46,9 +46,13 @@ local function build()
         settings.espTracer = v
     end, "espTracer")
 
-    GUI.makeSectionHeader(page, "Bomb ESP", 10)
+    GUI.makeToggle(page, "Arrows", "Стрелки за экраном", settings.espArrows, 10, function(v)
+        settings.espArrows = v
+    end, "espArrows")
 
-    GUI.makeToggle(page, "ESP Bomb", "Подсветка бомбы", settings.espBomb, 11, function(v)
+    GUI.makeSectionHeader(page, "Bomb ESP", 11)
+
+    GUI.makeToggle(page, "ESP Bomb", "Подсветка бомбы", settings.espBomb, 12, function(v)
         settings.espBomb = v
         if not v then
             settings.hitboxBomb = false
@@ -65,12 +69,12 @@ local function build()
         Logic.updateBombEsp()
     end, "espBomb")
 
-    GUI.makeToggle(page, "Hitbox Bomb", "Хитбокс бомбы", settings.hitboxBomb, 12, function(v)
+    GUI.makeToggle(page, "Hitbox Bomb", "Хитбокс бомбы", settings.hitboxBomb, 13, function(v)
         settings.hitboxBomb = v
         Logic.updateBombEsp()
     end, "hitboxBomb")
 
-    GUI.makeToggle(page, "Label Bomb", "Текст у бомбы", settings.labelBomb, 13, function(v)
+    GUI.makeToggle(page, "Label Bomb", "Текст у бомбы", settings.labelBomb, 14, function(v)
         settings.labelBomb = v
         Logic.updateBombEsp()
     end, "labelBomb")
@@ -84,7 +88,7 @@ local function build()
     colorBtn.TextSize = 13
     colorBtn.Font = Enum.Font.GothamBold
     colorBtn.AutoButtonColor = false
-    colorBtn.LayoutOrder = 14
+    colorBtn.LayoutOrder = 15
     colorBtn.Parent = page
 
     local colorBtnCorner = Instance.new("UICorner")
